@@ -1,7 +1,6 @@
 // components/Environment.jsx
-import React, { useRef } from "react";
+import React from "react";
 import * as THREE from "three";
-import { useFrame } from "@react-three/fiber";
 import { autobahnRoadData } from "../data/RoadData";
 
 export const Road = () => {

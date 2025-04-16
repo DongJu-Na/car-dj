@@ -53,7 +53,7 @@ export const PlayerCar = ({ email, textureUrl, registerRef, onExplode, spawnPosi
 
     // 카메라 따라붙기
     const carPos = groupRef.current.position;
-    const offset = new THREE.Vector3(0, 10, 20).applyEuler(groupRef.current.rotation);
+    const offset = new THREE.Vector3(0, 10, 30).applyEuler(groupRef.current.rotation);
     camera.position.copy(carPos.clone().add(offset));
     camera.lookAt(carPos);
   });

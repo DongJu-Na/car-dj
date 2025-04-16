@@ -1,36 +1,29 @@
 // components/AICar.jsx
-import React, { useMemo, useRef } from "react";
+import React, { useEffect } from "react";
 import { useGLTF } from "@react-three/drei";
-import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 
-export const AICar = ({ position = [0, 0.4, 100], color = "red" }) => {
-  const groupRef = useRef();
+export const AICar = React.forwardRef(({ color = "gray", position = [0, 0.4, 0] }, ref) => {
   const { scene } = useGLTF("/models/lowpoly_car_final_aligned.glb");
+  const clonedScene = scene.clone();
 
-  const carModel = useMemo(() => {
-    const cloned = scene.clone();
-    cloned.traverse((child) => {
+  useEffect(() => {
+    clonedScene.traverse((child) => {
       if (child.isMesh) {
-        child.material = new THREE.MeshStandardMaterial({
-          color: child.name.toLowerCase().includes("wheel") ? "#222" : color,
-        });
+        if (child.name.toLowerCase().includes("wheel")) {
+          child.material = new THREE.MeshStandardMaterial({ color: "#222" }); // 바퀴는 검정
+        } else {
+          child.material = new THREE.MeshStandardMaterial({ color }); // 차체 색상
+        }
         child.castShadow = true;
         child.receiveShadow = true;
       }
     });
-    return cloned;
-  }, [scene, color]);
-
-  useFrame(() => {
-    if (groupRef.current) {
-      groupRef.current.position.z -= 0.3;
-    }
-  });
+  }, [clonedScene, color]);
 
   return (
-    <group ref={groupRef} position={position} scale={1.2}>
-      <primitive object={carModel} />
+    <group ref={ref} position={position} scale={1.2}>
+      <primitive object={clonedScene} />
     </group>
   );
-};
+});
