@@ -1,6 +1,6 @@
 // pages/CityScene.jsx
-import React, { useRef, useState, useEffect, useMemo } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
+import React, { useRef, useState, useEffect } from "react";
+import { Canvas } from "@react-three/fiber";
 import { OrbitControls, PerspectiveCamera } from "@react-three/drei";
 import * as THREE from "three";
 import { Ground } from "../components/Ground";
@@ -9,27 +9,51 @@ import { PlayerCar } from "../components/PlayerCar";
 import { Road, BuildingSet } from "../components/Environment";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 
-const AICarManager = ({ playerRef, setGameOver, gltfScene }) => {
+const CityScene = ({ email, textureUrl }) => {
+  const carRef = useRef();
+  const [gameOver, setGameOver] = useState(false);
+  const buildingRefs = useRef([]);
   const groupRef = useRef();
   const carStates = useRef([]);
-  const clock = new THREE.Clock();
-  let spawnTime = 0;
+  const gltfRef = useRef();
+  const spawnClock = useRef(new THREE.Clock());
+  const lastSpawnTime = useRef(0);
 
-  useFrame(() => {
-    const delta = clock.getDelta();
-    spawnTime += delta;
+  useEffect(() => {
+    const loader = new GLTFLoader();
+    loader.load("/models/lowpoly_car_final_aligned.glb", (gltf) => {
+      gltfRef.current = gltf.scene;
+    });
+  }, []);
 
-    if (spawnTime > 3 && gltfScene) {
+  const handleFrame = () => {
+    if (!carRef.current || gameOver) return;
+
+    const carBox = new THREE.Box3().setFromObject(carRef.current);
+    for (const building of buildingRefs.current) {
+      const box = new THREE.Box3().setFromObject(building);
+      if (carBox.intersectsBox(box)) {
+        setGameOver(true);
+        return;
+      }
+    }
+
+    const delta = spawnClock.current.getDelta();
+    lastSpawnTime.current += delta;
+
+    if (lastSpawnTime.current > 3 && gltfRef.current) {
       const directions = ["straight", "left", "right"];
       const xLanes = [-20, -10, 0, 10, 20];
       const x = xLanes[Math.floor(Math.random() * xLanes.length)];
       const direction = directions[Math.floor(Math.random() * directions.length)];
-      const newCar = gltfScene.clone();
+
+      const newCar = gltfRef.current.clone();
       newCar.position.set(x, 0.4, 150);
       newCar.userData = { direction };
       groupRef.current.add(newCar);
       carStates.current.push({ mesh: newCar, direction });
-      spawnTime = 0;
+
+      lastSpawnTime.current = 0;
     }
 
     carStates.current.forEach((car) => {
@@ -46,31 +70,13 @@ const AICarManager = ({ playerRef, setGameOver, gltfScene }) => {
       }
       car.mesh.translateZ(-0.1);
 
-      if (playerRef?.current) {
-        const aiBox = new THREE.Box3().setFromObject(car.mesh);
-        const playerBox = new THREE.Box3().setFromObject(playerRef.current);
-        if (aiBox.intersectsBox(playerBox)) {
-          setGameOver(true);
-        }
+      const aiBox = new THREE.Box3().setFromObject(car.mesh);
+      const playerBox = new THREE.Box3().setFromObject(carRef.current);
+      if (aiBox.intersectsBox(playerBox)) {
+        setGameOver(true);
       }
     });
-  });
-
-  return <group ref={groupRef} />;
-};
-
-const CityScene = ({ email, textureUrl }) => {
-  const carRef = useRef();
-  const [gameOver, setGameOver] = useState(false);
-  const buildingRefs = useRef([]);
-  const [gltfScene, setGltfScene] = useState(null);
-
-  useEffect(() => {
-    const loader = new GLTFLoader();
-    loader.load("/models/lowpoly_car_final_aligned.glb", (gltf) => {
-      setGltfScene(gltf.scene.clone());
-    });
-  }, []);
+  };
 
   const handleExplode = () => setGameOver(true);
 
@@ -79,18 +85,6 @@ const CityScene = ({ email, textureUrl }) => {
       buildingRefs.current.push(buildingMesh);
     }
   };
-
-  useFrame(() => {
-    if (!carRef.current || gameOver) return;
-    const carBox = new THREE.Box3().setFromObject(carRef.current);
-    for (const building of buildingRefs.current) {
-      const box = new THREE.Box3().setFromObject(building);
-      if (carBox.intersectsBox(box)) {
-        setGameOver(true);
-        break;
-      }
-    }
-  });
 
   return (
     <>
@@ -104,14 +98,18 @@ const CityScene = ({ email, textureUrl }) => {
         </div>
       )}
 
-      <Canvas shadows camera={{ position: [0, 30, 50], fov: 60 }}>
+      <Canvas shadows camera={{ position: [0, 30, 50], fov: 60 }} onCreated={({ gl, scene }) => {
+        gl.setAnimationLoop(() => {
+          handleFrame();
+        });
+      }}>
         <PerspectiveCamera makeDefault position={[0, 30, 50]} />
         <OrbitControls maxPolarAngle={Math.PI / 2} />
         <Lights />
         <Ground />
         <Road />
         <BuildingSet onCollide={checkCollision} />
-        {gltfScene && <AICarManager playerRef={carRef} setGameOver={setGameOver} gltfScene={gltfScene} />}
+        <group ref={groupRef} />
 
         {!gameOver && (
           <PlayerCar
