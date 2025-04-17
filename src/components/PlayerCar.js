@@ -5,15 +5,14 @@ import { useGLTF, Text } from "@react-three/drei";
 import * as THREE from "three";
 
 const MAX_SPEED = 1.0;
-const MIN_SPEED = 0.1;
+const MIN_SPEED = 0.0;
 const ACCELERATION = 0.02;
 const DECELERATION = 0.01;
 
-export const PlayerCar = ({ email, textureUrl, registerRef, onExplode, spawnPosition = [0, 0.4, -40] }) => {
+export const PlayerCar = ({ email, carColor, registerRef, onExplode, spawnPosition = [0, 0.4, -40] }) => {
   const groupRef = useRef();
   const { scene } = useGLTF("/models/lowpoly_car_final_aligned.glb");
   const { camera } = useThree();
-  const texture = new THREE.TextureLoader().load(textureUrl);
   const [keys, setKeys] = useState({});
   const [exploded, setExploded] = useState(false);
   const velocity = useRef(MIN_SPEED);
@@ -28,13 +27,13 @@ export const PlayerCar = ({ email, textureUrl, registerRef, onExplode, spawnPosi
         if (child.name.toLowerCase().includes("wheel")) {
           child.material = new THREE.MeshStandardMaterial({ color: "#222" });
         } else {
-          child.material = new THREE.MeshStandardMaterial({ map: texture });
+          child.material = new THREE.MeshStandardMaterial({ color: carColor });
         }
         child.castShadow = true;
         child.receiveShadow = true;
       }
     });
-  }, [scene, texture]);
+  }, [scene, carColor]);
 
   useEffect(() => {
     const down = (e) => setKeys((k) => ({ ...k, [e.key.toLowerCase()]: true }));
